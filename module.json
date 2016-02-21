@@ -1,0 +1,16 @@
+{
+  "name": "wrd-utilities",
+  "version": "0.0.0",
+  "description": "Wearable Reference Design utilities.",
+  "keywords": [],
+  "author": "Marcus Chang <marcus.chang@arm.com>",
+  "repository": {
+    "url": "git@github.com:ARMmbed/wrd-utilities.git",
+    "type": "git"
+  },
+  "homepage": "https://github.com/ARMmbed/wrd-utilities",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "mbed-drivers": "~0.12.0"
+  }
+}
