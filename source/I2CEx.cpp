@@ -90,8 +90,6 @@ void I2CEx::processQueue(void)
     /* only process if queue is not empty */
     if (sendQueue.size() > 0)
     {
-        I2C::event_callback_t callback(this, &I2CEx::i2cDone);
-
         /* get action */
         I2CEx::transaction_t transaction = sendQueue.front();
 
@@ -100,20 +98,38 @@ void I2CEx::processQueue(void)
         {
             writeBuffer[0] = transaction.reg;
 
+#if DEVICE_I2C_ASYNCH
+            I2C::event_callback_t callback(this, &I2CEx::i2cDone);
             I2C::transfer(transaction.address,
                           writeBuffer, 1,
                           transaction.buffer, transaction.length,
                           callback);
+#else
+            I2C::read(transaction.address, writeBuffer, transaction.length);
+
+            FunctionPointer3<void, Buffer, Buffer, int> callback(this, &I2CEx::i2cDone);
+            minar::Scheduler::postCallback(callback);
+#endif
+
+
         }
         else
         {
             writeBuffer[0] = transaction.reg;
             memcpy(&writeBuffer[1], transaction.buffer, transaction.length);
 
+#if DEVICE_I2C_ASYNCH
+            I2C::event_callback_t callback(this, &I2CEx::i2cDone);
             I2C::transfer(transaction.address,
                           writeBuffer, transaction.length + 1,
                           transaction.buffer, 0,
                           callback);
+#else
+            I2C::write(transaction.address, writeBuffer, transaction.length + 1);
+
+            FunctionPointer3<void, Buffer, Buffer, int> callback(this, &I2CEx::i2cDone);
+            minar::Scheduler::postCallback(callback);
+#endif
         }
     }
     else
