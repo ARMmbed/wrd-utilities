@@ -18,6 +18,8 @@
 
 #include "wrd-utilities/I2CRegister.h"
 
+using namespace mbed::drivers::v2;
+
 I2CRegister::I2CRegister(PinName sda, PinName scl)
     :   I2C(sda, scl),
         notBusy(true),
@@ -26,40 +28,49 @@ I2CRegister::I2CRegister(PinName sda, PinName scl)
 
 }
 
-void I2CRegister::read(uint16_t address,
+bool I2CRegister::read(uint16_t address,
                        uint8_t reg,
                        void* buffer,
                        size_t length,
                        FunctionPointer0<void> callback)
 {
+    bool result = false;
+
     if (notBusy)
     {
         notBusy = false;
         callbackHandle = callback;
 
-        FunctionPointer2<void, mbed::drivers::v2::I2CTransaction*, uint32_t>
+        FunctionPointer2<void, I2CTransaction*, uint32_t>
         fp(this, &I2CRegister::i2cDone);
 
-        I2C::transfer_to(address)
-            .tx_ephemeral(&reg, 1)
-            .rx(buffer, length)
-            .on(I2C_EVENT_ALL, fp)
-            .apply();
+        I2CError retval = I2C::transfer_to(address)
+                              .tx_ephemeral(&reg, 1)
+                              .rx(buffer, length)
+                              .on(I2C_EVENT_ALL, fp)
+                              .apply();
+
+        result = (retval == I2CError::None);
     }
+
+    return result;
 }
 
-void I2CRegister::write(uint16_t address,
+bool I2CRegister::write(uint16_t address,
                         uint8_t reg,
                         void* buffer,
                         size_t length,
                         FunctionPointer0<void> callback)
 {
+    bool result = false;
+
     if (notBusy)
     {
         notBusy = false;
         callbackHandle = callback;
 
-        FunctionPointer2<void, mbed::drivers::v2::I2CTransaction*, uint32_t>
+        I2CError retval;
+        FunctionPointer2<void, I2CTransaction*, uint32_t>
         fp(this, &I2CRegister::i2cDone);
 
         if (length < 7)
@@ -72,10 +83,10 @@ void I2CRegister::write(uint16_t address,
             memcpy(&tempBuffer[1], buffer, length);
 
             // setup i2c transfer, use ephemeral call to copy temporary buffer
-            I2C::transfer_to(address)
-                .tx_ephemeral(tempBuffer, length + 1)
-                .on(I2C_EVENT_ALL, fp)
-                .apply();
+            retval = I2C::transfer_to(address)
+                         .tx_ephemeral(tempBuffer, length + 1)
+                         .on(I2C_EVENT_ALL, fp)
+                         .apply();
         }
         else
         {
@@ -90,16 +101,19 @@ void I2CRegister::write(uint16_t address,
             memcpy(&tempBuffer[1], buffer, length);
 
             // setup i2c transfer
-            I2C::transfer_to(address)
-                .tx(tempBuffer, length + 1)
-                .on(I2C_EVENT_ALL, fp)
-                .apply();
+            retval = I2C::transfer_to(address)
+                         .tx(tempBuffer, length + 1)
+                         .on(I2C_EVENT_ALL, fp)
+                         .apply();
         }
 
+        result = (retval == I2CError::None);
     }
+
+    return result;
 }
 
-void I2CRegister::i2cDone(mbed::drivers::v2::I2CTransaction* transaction, uint32_t event)
+void I2CRegister::i2cDone(I2CTransaction* transaction, uint32_t event)
 {
     (void) transaction;
     (void) event;
